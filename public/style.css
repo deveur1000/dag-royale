@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+html {
+  height: 100%;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 222, 128, 0.5) rgba(31, 41, 55, 0.5);
+}
+
+body {
+  font-family: 'Orbitron', sans-serif;
+  background: #000;
+  overflow-x: hidden;
+  color: white;
+}
+
+/* Scrollbar Styles */
+/* Webkit browsers (Chrome, Safari, newer versions of Opera) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #4ade80, #3b82f6);
+  border-radius: 4px;
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #4ade80, #3b82f6);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.7);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4ade80 rgba(31, 41, 55, 0.5);
+}
+
+/* Edge and IE */
+body {
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+.glow {
+  box-shadow: 0 0 5px #00ff00, 0 0 5px #00ff00, 0 0 5px #00ff00, 0 0 5px #00ff00;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.bg-stars {
+  background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 800 800"%3E%3Cg fill="none" stroke="%23404" stroke-width="1"%3E%3Cpath d="M769 229L1037 260.9M927 880L731 737 520 660 309 538 40 599 295 764 126.5 879.5 40 599-197 493 102 382-31 229 126.5 79.5-69-63"%3E%3C/path%3E%3Cpath d="M-31 229L237 261 390 382 603 493 308.5 537.5 101.5 381.5M370 905L295 764"%3E%3C/path%3E%3Cpath d="M520 660L578 842 731 737 840 599 603 493 520 660 295 764 309 538 390 382 539 269 769 229 577.5 41.5 370 105 295 -36 126.5 79.5 237 261 102 382 40 599 -69 737 127 880"%3E%3C/path%3E%3Cpath d="M520-140L578.5 42.5 731-63M603 493L539 269 237 261 370 105M902 382L539 269M390 382L102 382"%3E%3C/path%3E%3Cpath d="M-222 42L126.5 79.5 370 105 539 269 577.5 41.5 927 80 769 229 902 382 603 493 731 737M295-36L577.5 41.5M578 842L295 764M40-201L127 80M102 382L-261 269"%3E%3C/path%3E%3C/g%3E%3Cg fill="%23505"%3E%3Ccircle cx="769" cy="229" r="5"%3E%3C/circle%3E%3Ccircle cx="539" cy="269" r="5"%3E%3C/circle%3E%3Ccircle cx="603" cy="493" r="5"%3E%3C/circle%3E%3Ccircle cx="731" cy="737" r="5"%3E%3C/circle%3E%3Ccircle cx="520" cy="660" r="5"%3E%3C/circle%3E%3Ccircle cx="309" cy="538" r="5"%3E%3C/circle%3E%3Ccircle cx="295" cy="764" r="5"%3E%3C/circle%3E%3Ccircle cx="40" cy="599" r="5"%3E%3C/circle%3E%3Ccircle cx="102" cy="382" r="5"%3E%3C/circle%3E%3Ccircle cx="127" cy="80" r="5"%3E%3C/circle%3E%3Ccircle cx="370" cy="105" r="5"%3E%3C/circle%3E%3Ccircle cx="578" cy="42" r="5"%3E%3C/circle%3E%3Ccircle cx="237" cy="261" r="5"%3E%3C/circle%3E%3Ccircle cx="390" cy="382" r="5"%3E%3C/circle%3E%3C/g%3E%3C/svg%3E');
+}
+
+.space-card {
+  background: rgba(16, 24, 48, 0.8);
+  border: 1px solid #4a5ae9;
+  box-shadow: 0 0 15px rgba(74, 90, 233, 0.5);
+}
+
+.readable-text {
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.6;
+}
+
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  color: #4ade80;
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+/* Game Statistics Styles */
+.game-stats {
+  transition: all 0.3s ease;
+}
+
+.game-stats:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.stat-item {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.stat-item p:first-child {
+  margin-bottom: 0.5rem;
+}
+
+/* Leaderboard styles */
+.leaderboard-container {
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.leaderboard-table thead tr {
+  background: linear-gradient(to right, #4338ca, #5b21b6);
+}
+
+.leaderboard-table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leaderboard-table tbody tr {
+  background-color: rgba(31, 41, 55, 0.5);
+  transition: all 0.3s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+  background-color: rgba(55, 65, 81, 0.7);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.leaderboard-table td {
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.leaderboard-table tbody tr:hover td {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.leaderboard-table tbody tr:hover td:first-child {
+  padding-left: 1.5rem;
+}
+
+.leaderboard-table tbody tr:hover td:last-child {
+  padding-right: 1.5rem;
+}
+
+/* Ensure the table doesn't overflow its container */
+.overflow-x-auto {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Custom scrollbar for Webkit browsers */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(59, 130, 246, 0.5);
+  border-radius: 3px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(59, 130, 246, 0.7);
+}
+
+/* Copy address button */
+.copy-address {
+  background-color: rgba(75, 85, 99, 0.5);
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.3s ease;
+}
+
+.copy-address:hover {
+  background-color: rgba(75, 85, 99, 0.8);
+}
+
+.cosmic-bg {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(76, 0, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 100% 0%, rgba(60, 255, 200, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(255, 42, 112, 0.1) 0%, transparent 50%);
+  animation: pulse 5s infinite alternate;
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  border-radius: 50%;
+}
+
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  animation: float 6s infinite ease-in-out;
+}
+
+.ring {
+  position: absolute;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
