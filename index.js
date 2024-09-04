@@ -131,8 +131,8 @@ app.get("/current-round", async (req, res) => {
  */
 app.get("/all-transactions", async (req, res) => {
     try {
-        const transactions = await fetchAllTransactions();
-        res.status(200).json(transactions);
+        const { filteredTransactions, draw_id } = await fetchAllTransactions("Running");
+        res.status(200).json(filteredTransactions);
     } catch (error) {
         console.error("Error fetching all transactions:", error);
         res.status(500).json({
@@ -149,10 +149,10 @@ app.get("/all-transactions", async (req, res) => {
 const calculatePrizes = async () => {
     try {
         // Update draw statuses
-        await updateDrawStatuses(draw_id, draw_counter);
+        //await updateDrawStatuses(draw_id, draw_counter);
 
         // Fetch and process transactions
-        const filteredTransactions = await fetchAllTransactions();
+        const { filteredTransactions, draw_id } = await fetchAllTransactions("Processing");
 
         if (filteredTransactions.length === 0) {
             throw new Error("No transactions found in the given date range");
@@ -293,6 +293,100 @@ const retry = async () => {
     }
 };
 
+const finalizeAndStartNewDraw = async () => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        // get the running draw
+        const { rows: drawDaily } = await client.query(`
+            SELECT 
+                id AS draw_id,
+                date_start,
+                date_end,
+                draw_counter
+            FROM draws
+            WHERE status = 'Running'
+            LIMIT 1
+        `);
+
+        const { date_start, date_end, draw_id, draw_counter } = drawDaily[0];
+
+        const currentDate = new Date().toISOString().slice(0, 10); // Obtém a data atual no formato 'YYYY-MM-DD'
+
+        if (
+            drawDaily.length !== 1 ||
+            drawDaily[0].date_end.slice(0, 10) !== currentDate
+        ) {
+            await client.query("ROLLBACK");
+            throw new Error("A draw has already been processed for today");
+        }
+
+        await client.query(
+            `
+            UPDATE draws
+            SET status = 'Processing',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+        `,
+            [draw_id],
+        );
+
+        let drawCounter = draw_counter + 1;
+
+        // get the the next draw to run
+        const { rows: nextDraw } = await client.query(
+            `
+            SELECT 
+                id AS draw_id,
+                date_start,
+                date_end,
+                draw_counter
+            FROM draws
+            WHERE draw_counter = $1
+            LIMIT 1
+        `,
+            [drawCounter],
+        );
+
+        const currentDatePlusOne = new Date();
+        currentDatePlusOne.setDate(currentDatePlusOne.getDate() + 1);
+
+        const formattedCurrentDatePlusOne = currentDatePlusOne
+            .toISOString()
+            .split("T")[0];
+
+        if (
+            nextDraw.length !== 1 ||
+            new Date(nextDraw[0].date_end).toISOString().split("T")[0] !==
+                formattedCurrentDatePlusOne ||
+            nextDraw[0].status !== "Pending"
+        ) {
+            await client.query("ROLLBACK");
+            throw new Error("Invalid next draw configuration");
+        }
+
+        await client.query(
+            `
+            UPDATE draws
+            SET status = 'Running',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE draw_counter = $1
+        `,
+            [drawCounter],
+        );
+
+        await client.query("COMMIT");
+    } catch (error) {
+        console.error(
+            "Error running the finalizeAndStartNewDraw function:",
+            error,
+        );
+    } finally {
+        client.release();
+    }
+};
+
 /**
  * Fetches the current active draw from the database
  * @returns {Object} Draw information
@@ -317,6 +411,30 @@ async function fetchCurrentDraw() {
 }
 
 /**
+ * Fetches the current active draw from the database
+ * @returns {Object} Draw information
+ */
+async function fetchProcessingDraw() {
+    const result = await pool.query(`
+        SELECT 
+            id AS draw_id,
+            date_start,
+            date_end,
+            draw_counter
+        FROM draws
+        WHERE status = 'Processing'
+        ORDER BY draw_counter ASC
+        LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+        throw new Error("No available draw found");
+    }
+
+    return result.rows[0];
+}
+
+/**
  * Updates the statuses of draws in the database
  * @param {number} currentDrawId - ID of the current draw
  * @param {number} currentDrawCounter - Counter of the current draw
@@ -324,15 +442,16 @@ async function fetchCurrentDraw() {
 async function updateDrawStatuses(currentDrawId, currentDrawCounter) {
     await pool.query(
         `UPDATE draws
-         SET status = 'Processing', updated_at = CURRENT_DATE
+         SET status = 'Processing', updated_at = CURRENT_TIMESTAMP
          WHERE id = $1`,
         [currentDrawId],
     );
 
     const nextDrawCounter = currentDrawCounter + 1;
+
     await pool.query(
         `UPDATE draws
-         SET status = 'Running', updated_at = CURRENT_DATE
+         SET status = 'Running', updated_at = CURRENT_TIMESTAMP
          WHERE draw_counter = $1`,
         [nextDrawCounter],
     );
@@ -342,7 +461,7 @@ async function updateDrawStatuses(currentDrawId, currentDrawCounter) {
  * Fetches all transactions from the DAG network
  * @returns {Array} Array of transactions
  */
-async function fetchAllTransactions() {
+async function fetchAllTransactions(drawStatus) {
     let transactions = [];
     let nextToken = null;
     let baseUrl = `${BE_URL}/addresses/${PUBLIC_KEY}/transactions/received?limit=50`;
@@ -372,7 +491,19 @@ async function fetchAllTransactions() {
         }
     } while (nextToken);
 
-    const drawResult = await fetchCurrentDraw();
+    // Choose the correct function based on the drawStatus parameter
+    let drawResult;
+
+    if (drawStatus === "Running") {
+        drawResult = await fetchCurrentDraw();
+    } else if (drawStatus === "Processing") {
+        drawResult = await fetchProcessingDraw();
+    } else {
+        throw new Error(
+            "Invalid draw status provided. Use 'Running' or 'Processing'.",
+        );
+    }
+
     const { date_start, date_end, draw_id, draw_counter } = drawResult;
 
     const filteredTransactions = filterTransactions(
@@ -381,7 +512,7 @@ async function fetchAllTransactions() {
         date_end,
     );
 
-    return filteredTransactions;
+    return { filteredTransactions, draw_id };
 }
 
 /**
@@ -547,10 +678,10 @@ cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     try {
         console.log("Executing scheduled task to calculate prizes");
         //const response = await axios.get(`${APP_URL}/calculate-prizes`);
-        const result = await calculatePrizes();
+        const result = await finalizeAndStartNewDraw(); //calculatePrizes();
         console.log("Prize calculation completed:", result.data);
     } catch (error) {
-        console.error("Error during scheduled prize calculation:", error);
+        console.error("Error during scheduled finalizeAndStartNewDraw:", error);
     }
 });
 
@@ -561,6 +692,16 @@ cron.schedule("*/10 * * * *", async () => {
         console.log("Function return:", result);
     } catch (error) {
         console.error("Error calling retry:", error.message);
+    }
+});
+
+cron.schedule("*/1 * * * *", async () => {
+    try {
+        console.log("Executing scheduled task every 30 minutes");
+        const result = await calculatePrizes();
+        console.log("Function return:", result);
+    } catch (error) {
+        console.error("Error calling calculatePrizes:", error.message);
     }
 });
 
