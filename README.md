@@ -15,47 +15,6 @@ Players send DAG tokens to a designated address, competing for a chance to win b
 - 📱 Responsive design for desktop and mobile
 
 ## 🛠 Installation
-
-Get DAG Royale up and running in your local environment with these simple steps:
-
-1. **Clone the repository**
-   ```
-   git clone https://github.com/deveur1000/dag-royale
-   cd dag-royale
-   ```
-
-2. **Install dependencies**
-   ```
-   npm install
-   ```
-
-3. **Set up environment variables**
-   Create a `.env` file in the root directory and add the following:
-   ```
-   DBUSER=your_database_user
-   PGHOST=your_database_host
-   PGDATABASE=your_database_name
-   DBUSERPASSWORD=your_database_password
-   PGPORT=your_database_port
-   PRIVATE_KEY=your_dag_private_key
-   PUBLIC_KEY=your_dag_public_key
-   CRON_SCHEDULE="0 21 * * *"
-   ```
-
-4. **Set up the database**
-   Run the SQL scripts in the `database` folder to set up your PostgreSQL database schema.
-
-5. **Start the server**
-   ```
-   npm start
-   ```
-
-6. **Open the application**
-   Visit `http://localhost:3000` in your web browser to see DAG Royale in action!
-
-
-## Detailed Installation Guide
-
 For comprehensive installation instructions, please refer to our [Installation Guide](INSTALL.md).
 
 ## 🚀 Usage
@@ -86,4 +45,8 @@ This project was proudly submitted to the Metagraph Hackathon https://metagraph.
 
 ---
 
+<<<<<<< HEAD
 Created with 💖 and ☕ 
+=======
+Created with 💖 and ☕ 
+>>>>>>> f906e9f (Added open source license, readme, db setup and script improvements)

@@ -1,7 +1,7 @@
 /**
- * DAG-based Lottery System
+ * DAG Royale
  *
- * This application implements a decentralized lottery system using the Constellation Network's DAG technology.
+ * This application implements a game using the Constellation Network's DAG technology.
  * It automates the process of selecting winners and distributing prizes based on transaction data.
  *
  * Features:
@@ -10,11 +10,7 @@
  * - Scheduled tasks using node-cron
  * - RESTful API endpoints for querying current round and calculating prizes
  * - Configurable for both local development and Replit deployment
- * - Enhanced database configuration using granular environment variables
- * - Hardcoded URLs for non-sensitive endpoints
  *
- * @author Your Name
- * @version 1.3.0
  */
 
 const express = require("express");
@@ -48,7 +44,7 @@ const {
     PGDATABASE,
     DBUSERPASSWORD,
     PGPORT,
-    PRIVATE_KEY,
+    PRIVATEKEY,
     CRON_SCHEDULE,
     PUBLIC_KEY,
 } = env;
@@ -131,7 +127,8 @@ app.get("/current-round", async (req, res) => {
  */
 app.get("/all-transactions", async (req, res) => {
     try {
-        const { filteredTransactions, draw_id } = await fetchAllTransactions("Running");
+        const { filteredTransactions, draw_id } =
+            await fetchAllTransactions("Running");
         res.status(200).json(filteredTransactions);
     } catch (error) {
         console.error("Error fetching all transactions:", error);
@@ -152,26 +149,28 @@ const calculatePrizes = async () => {
         //await updateDrawStatuses(draw_id, draw_counter);
 
         // Fetch and process transactions
-        const { filteredTransactions, draw_id } = await fetchAllTransactions("Processing");
+        const { filteredTransactions, draw_id } =
+            await fetchAllTransactions("Processing");
 
         if (filteredTransactions.length === 0) {
-            throw new Error("No transactions found in the given date range");
+            console.error("No transactions found in the given date range");
+            return;
         }
 
         // Calculate prizes
         const amountsBySource = groupTransactionsBySource(filteredTransactions);
         const { winnerTransaction, totalAmount } =
             findWinnerAndTotal(amountsBySource);
-        const topPrize = calculatePrize(
-            totalAmount,
-            TOP_PRIZE_PERCENTAGE,
-            amountsBySource.length,
-        );
-        const individualPrize = calculatePrize(
-            totalAmount,
-            INDIVIDUAL_PRIZE_PERCENTAGE,
-            amountsBySource.length,
-        );
+
+        let topPrize =
+            (totalAmount * TOP_PRIZE_PERCENTAGE +
+                (totalAmount / amountsBySource.length) *
+                    INDIVIDUAL_PRIZE_PERCENTAGE) *
+            PERC;
+        let individualPrize =
+            (totalAmount / amountsBySource.length) *
+            INDIVIDUAL_PRIZE_PERCENTAGE *
+            PERC;
 
         // Process DAG transactions
         const transactionsSent = await processDAGTransactions(
@@ -179,7 +178,12 @@ const calculatePrizes = async () => {
             winnerTransaction,
             topPrize,
             individualPrize,
+            draw_id,
         );
+
+        if (transactionsSent.length === 0) {
+            console.warn("No transactions was sent");
+        }
 
         // Update database
         await updateDatabase(
@@ -190,23 +194,14 @@ const calculatePrizes = async () => {
             winnerTransaction.source,
         );
 
-        /* res.status(200).json({
-            totalAmount,
-            winner: winnerTransaction,
-            topPrize,
-            individualPrize,
-        }); */
-
         return {
             totalAmount,
             winner: winnerTransaction,
-            dagObject: txn_data,
             topPrize,
             individualPrize,
         };
     } catch (error) {
         console.error("Error processing prizes:", error);
-        //res.status(500).json({ error: "Failed to process prizes" });
         throw new Error("Failed to fetch transactions");
     }
 };
@@ -293,7 +288,7 @@ const retry = async () => {
     }
 };
 
-const finalizeAndStartNewDraw = async () => {
+const finalizeDraw = async () => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -312,27 +307,39 @@ const finalizeAndStartNewDraw = async () => {
 
         const { date_start, date_end, draw_id, draw_counter } = drawDaily[0];
 
-        const currentDate = new Date().toISOString().slice(0, 10); // Obtém a data atual no formato 'YYYY-MM-DD'
+        const currentDate = new Date().toISOString().split("T")[0];
 
         if (
-            drawDaily.length !== 1 ||
-            drawDaily[0].date_end.slice(0, 10) !== currentDate
+            drawDaily.length === 1 &&
+            new Date(drawDaily[0].date_end).toISOString().split("T")[0] <=
+                currentDate
         ) {
+            await client.query(
+                `
+                UPDATE draws
+                SET status = 'Processing',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+            `,
+                [draw_id],
+            );
+        } else {
             await client.query("ROLLBACK");
             throw new Error("A draw has already been processed for today");
         }
 
-        await client.query(
-            `
-            UPDATE draws
-            SET status = 'Processing',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-        `,
-            [draw_id],
-        );
+        await client.query("COMMIT");
+    } catch (error) {
+        console.error("Error running the finalizeDraw function:", error);
+    } finally {
+        client.release();
+    }
+};
 
-        let drawCounter = draw_counter + 1;
+const startNewDraw = async () => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
         // get the the next draw to run
         const { rows: nextDraw } = await client.query(
@@ -341,47 +348,55 @@ const finalizeAndStartNewDraw = async () => {
                 id AS draw_id,
                 date_start,
                 date_end,
-                draw_counter
+                draw_counter,
+                status
             FROM draws
-            WHERE draw_counter = $1
+            WHERE DATE(date_end) = CURRENT_DATE
             LIMIT 1
         `,
-            [drawCounter],
         );
 
+        const currentDate = new Date();
         const currentDatePlusOne = new Date();
         currentDatePlusOne.setDate(currentDatePlusOne.getDate() + 1);
 
+        const formattedCurrentDate = currentDate.toISOString().split("T")[0];
         const formattedCurrentDatePlusOne = currentDatePlusOne
             .toISOString()
             .split("T")[0];
 
+        const dtEnd = new Date(nextDraw[0].date_end)
+            .toISOString()
+            .split("T")[0];
+
+        console.log("formattedCurrentDate:  " + formattedCurrentDate);
+        console.log(
+            "formattedCurrentDatePlusOne:  " + formattedCurrentDatePlusOne,
+        );
+        console.log("dtEnd: " + dtEnd);
+
         if (
-            nextDraw.length !== 1 ||
-            new Date(nextDraw[0].date_end).toISOString().split("T")[0] !==
-                formattedCurrentDatePlusOne ||
-            nextDraw[0].status !== "Pending"
+            (dtEnd === formattedCurrentDate ||
+                dtEnd === formattedCurrentDatePlusOne) &&
+            nextDraw[0].status === "Pending"
         ) {
+            await client.query(
+                `
+                UPDATE draws
+                SET status = 'Running',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE draw_counter = $1
+            `,
+                [nextDraw[0].draw_counter],
+            );
+        } else {
             await client.query("ROLLBACK");
             throw new Error("Invalid next draw configuration");
         }
 
-        await client.query(
-            `
-            UPDATE draws
-            SET status = 'Running',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE draw_counter = $1
-        `,
-            [drawCounter],
-        );
-
         await client.query("COMMIT");
     } catch (error) {
-        console.error(
-            "Error running the finalizeAndStartNewDraw function:",
-            error,
-        );
+        console.error("Error running the startNewDraw function:", error);
     } finally {
         client.release();
     }
@@ -415,23 +430,27 @@ async function fetchCurrentDraw() {
  * @returns {Object} Draw information
  */
 async function fetchProcessingDraw() {
-    const result = await pool.query(`
-        SELECT 
-            id AS draw_id,
-            date_start,
-            date_end,
-            draw_counter
-        FROM draws
-        WHERE status = 'Processing'
-        ORDER BY draw_counter ASC
-        LIMIT 1
-    `);
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id AS draw_id,
+                date_start,
+                date_end,
+                draw_counter
+            FROM draws
+            WHERE status = 'Processing'
+            ORDER BY draw_counter ASC
+            LIMIT 1
+        `);
 
-    if (result.rows.length === 0) {
-        throw new Error("No available draw found");
+        if (result.rows.length === 0) {
+            throw new Error("No available draw found");
+        }
+
+        return result.rows[0];
+    } catch (error) {
+        console.error("fetchProcessingDraw:  " + error);
     }
-
-    return result.rows[0];
 }
 
 /**
@@ -504,6 +523,15 @@ async function fetchAllTransactions(drawStatus) {
         );
     }
 
+    if (
+        typeof drawResult === "undefined" ||
+        !drawResult ||
+        drawResult.draw_id === 0
+    ) {
+        console.warn("No available drawResult found");
+        return { filteredTransactions: [], draw_id: null };
+    }
+
     const { date_start, date_end, draw_id, draw_counter } = drawResult;
 
     const filteredTransactions = filterTransactions(
@@ -529,7 +557,7 @@ function filterTransactions(transactions, startDate, endDate) {
         const txDate = new Date(tx.timestamp);
         const isWithinDateRange = txDate >= startDate && txDate <= endDate;
         const isAboveMinAmount = tx.amount >= minAmount;
-        console.log(tx.amount, minAmount);
+        //console.log(tx.amount, minAmount);
         return isWithinDateRange && isAboveMinAmount;
     });
 }
@@ -570,7 +598,7 @@ function findWinnerAndTotal(transactions) {
             winnerTransaction = tx;
         }
     });
-
+    console.log("Total:" + totalAmount);
     return { winnerTransaction, totalAmount };
 }
 
@@ -605,36 +633,87 @@ async function processDAGTransactions(
     winnerTransaction,
     topPrize,
     individualPrize,
+    draw_id,
 ) {
-    let transactionsSent = [];
+    try {
+        let transactionsSent = [];
 
-    // Connect to DAG network
-    dag4.account.connect(
-        {
-            id: "integration2",
-            networkVersion: "2.0",
-            beUrl: BE_URL,
-            l0Url: L0_URL,
-            l1Url: L1_URL,
-        },
-        false,
-    );
+        // Connect to DAG network
+        dag4.account.connect(
+            {
+                id: "integration2",
+                networkVersion: "2.0",
+                beUrl: BE_URL,
+                l0Url: L0_URL,
+                l1Url: L1_URL,
+            },
+            false,
+        );
 
-    dag4.account.loginPrivateKey(PRIVATE_KEY);
+        dag4.account.loginPrivateKey(PRIVATEKEY);
 
-    for (const transaction of amountsBySource) {
-        const toAddress = transaction.source;
-        const amount =
-            toAddress === winnerTransaction.source ? topPrize : individualPrize;
-        const fee = 0.002; // Transaction fee
+        for (const transaction of amountsBySource) {
+            const toAddress = transaction.source;
+            const amount =
+                toAddress === winnerTransaction.source
+                    ? topPrize
+                    : individualPrize;
+            const fee = 0.002; // Transaction fee
 
-        const hash = await dag4.account.transferDag(toAddress, amount, fee);
-        transactionsSent = transactionsSent.concat(hash);
+            const result = await pool.query(
+                `
+                SELECT id, status 
+                FROM Distributions
+                WHERE 1=1 
+                	AND public_key = $1
+                	AND draw_id = $2
+                	AND prize = $3
+            `,
+                [toAddress, draw_id, amount],
+            );
 
-        await delay(DELAY_MS);
+            if (result.rows.length === 0) {
+                try {
+                    const hashResult = await dag4.account.transferDag(
+                        toAddress,
+                        amount,
+                        fee,
+                    );
+
+                    const { timestamp, hash, toAmount, receiver, fee, status } =
+                        hashResult;
+
+                    let hashSuccess = {
+                        timestamp: timestamp,
+                        hash: hash,
+                        amount: toAmount,
+                        receiver: receiver,
+                        fee: fee,
+                        status: status,
+                        message: null,
+                    };
+
+                    transactionsSent = transactionsSent.concat(hashSuccess);
+                } catch (error) {
+                    let hashFail = {
+                        timestamp: new Date().toISOString(),
+                        hash: null,
+                        amount: amount,
+                        receiver: toAddress,
+                        fee: fee,
+                        status: "Error",
+                        message: error.message,
+                    };
+
+                    transactionsSent = transactionsSent.concat(hashFail);
+                }
+            }
+        }
+
+        return transactionsSent;
+    } catch (error) {
+        console.error("Error to send transactions: " + error);
     }
-
-    return transactionsSent;
 }
 
 /**
@@ -653,13 +732,14 @@ async function updateDatabase(
     winnerPublicKey,
 ) {
     for (const transaction of transactionsSent) {
-        const { timestamp, hash, amount, receiver, fee, status } = transaction;
+        const { timestamp, hash, amount, receiver, fee, status, message } =
+            transaction;
         const date = new Date(timestamp).toISOString();
 
         await pool.query(
-            `INSERT INTO distributions (draw_id, public_key, prize, fee_paid, transaction_datetime, status, hash)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [drawId, receiver, amount, fee, date, status, hash],
+            `INSERT INTO distributions (draw_id, public_key, prize, fee_paid, transaction_datetime, status, hash, error_message)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [drawId, receiver, amount, fee, date, status, hash, message],
         );
     }
 
@@ -673,21 +753,25 @@ async function updateDatabase(
     console.log("Processing completed and database updated.");
 }
 
-// Configure scheduled task
+// Configure scheduled task 0 21 * * *
 cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     try {
-        console.log("Executing scheduled task to calculate prizes");
+        console.log("Executing scheduled task to finalize and start a draw");
         //const response = await axios.get(`${APP_URL}/calculate-prizes`);
-        const result = await finalizeAndStartNewDraw(); //calculatePrizes();
-        console.log("Prize calculation completed:", result.data);
+        await finalizeDraw();
+        await startNewDraw(); //calculatePrizes();
+        console.log("finalize and start a draw completed");
     } catch (error) {
-        console.error("Error during scheduled finalizeAndStartNewDraw:", error);
+        console.error(
+            "Error during scheduled finalize and start a draw:",
+            error,
+        );
     }
 });
 
-cron.schedule("*/10 * * * *", async () => {
+cron.schedule("*/60 * * * *", async () => {
     try {
-        console.log("Executing scheduled task every 30 minutes");
+        console.log("Executing scheduled task every 60 minutes");
         const result = await retry();
         console.log("Function return:", result);
     } catch (error) {
@@ -695,11 +779,18 @@ cron.schedule("*/10 * * * *", async () => {
     }
 });
 
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/5 * * * *", async () => {
     try {
-        console.log("Executing scheduled task every 30 minutes");
+        console.log("Executing scheduled task every 1 minute");
         const result = await calculatePrizes();
-        console.log("Function return:", result);
+
+        if (typeof result === "undefined" || !result) {
+            console.warn(
+                "The function calculatePrizes has nothing to process.",
+            );
+        } else {
+            console.log("Function calculate prizes:", result);
+        }
     } catch (error) {
         console.error("Error calling calculatePrizes:", error.message);
     }
