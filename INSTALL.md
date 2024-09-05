@@ -61,7 +61,7 @@ npm install
    PGDATABASE=dag_royale
    DBUSERPASSWORD=your_postgres_password
    PGPORT=5432
-   PRIVATEKEY=your_dag_private_key
+   PRIVATE_KEY=your_dag_private_key
    PUBLIC_KEY=your_dag_public_key
    CRON_SCHEDULE="0 21 * * *"
    ```
