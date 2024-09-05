@@ -37,7 +37,7 @@ Get DAG Royale up and running in your local environment with these simple steps:
    PGDATABASE=your_database_name
    DBUSERPASSWORD=your_database_password
    PGPORT=your_database_port
-   PRIVATEKEY=your_dag_private_key
+   PRIVATE_KEY=your_dag_private_key
    PUBLIC_KEY=your_dag_public_key
    CRON_SCHEDULE="0 21 * * *"
    ```
