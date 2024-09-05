@@ -54,8 +54,8 @@ const FEE = 0.05;
 const INDIVIDUAL_PRIZE_PERCENTAGE = 0.475;
 const TOP_PRIZE_PERCENTAGE = 0.475;
 const PERC = 0.00000001; // Smallest unit of DAG
-const DELAY_MS = 5000; // Delay between transactions
 const MIN_DAG_TX_AMOUNT = 5 * 100000000; // Minimum amount of DAG to be considered a transaction
+const DAG_TXN_FEE = 0.002; // Minimum amount of DAG to be considered a transaction
 
 // Initialize Express app
 const app = express();
@@ -142,12 +142,8 @@ app.get("/all-transactions", async (req, res) => {
  * GET /calculate-prizes
  * Calculates and distributes prizes for the current round
  */
-//app.get("/calculate-prizes", async (req, res) => {
 const calculatePrizes = async () => {
     try {
-        // Update draw statuses
-        //await updateDrawStatuses(draw_id, draw_counter);
-
         // Fetch and process transactions
         const { filteredTransactions, draw_id } =
             await fetchAllTransactions("Processing");
@@ -337,11 +333,17 @@ const finalizeDraw = async () => {
 };
 
 const startNewDraw = async () => {
+    // Get a client from the connection pool
     const client = await pool.connect();
     try {
+        // Start a database transaction
         await client.query("BEGIN");
 
-        // get the the next draw to run
+        // Query to get the next draw to run
+        // 1. Selects draws with 'Pending' status
+        // 2. Checks if the draw ends today or tomorrow
+        // 3. Orders by draw_id to ensure consistent selection
+        // 4. Limits to 1 result to get only the next draw
         const { rows: nextDraw } = await client.query(
             `
             SELECT 
@@ -351,35 +353,16 @@ const startNewDraw = async () => {
                 draw_counter,
                 status
             FROM draws
-            WHERE DATE(date_end) = CURRENT_DATE
+            WHERE status = 'Pending'
+              AND date_end::date IN (CURRENT_DATE, CURRENT_DATE + 1)
+            ORDER BY draw_id
             LIMIT 1
         `,
         );
 
-        const currentDate = new Date();
-        const currentDatePlusOne = new Date();
-        currentDatePlusOne.setDate(currentDatePlusOne.getDate() + 1);
-
-        const formattedCurrentDate = currentDate.toISOString().split("T")[0];
-        const formattedCurrentDatePlusOne = currentDatePlusOne
-            .toISOString()
-            .split("T")[0];
-
-        const dtEnd = new Date(nextDraw[0].date_end)
-            .toISOString()
-            .split("T")[0];
-
-        console.log("formattedCurrentDate:  " + formattedCurrentDate);
-        console.log(
-            "formattedCurrentDatePlusOne:  " + formattedCurrentDatePlusOne,
-        );
-        console.log("dtEnd: " + dtEnd);
-
-        if (
-            (dtEnd === formattedCurrentDate ||
-                dtEnd === formattedCurrentDatePlusOne) &&
-            nextDraw[0].status === "Pending"
-        ) {
+        // Check if a valid draw was found
+        if (nextDraw.length > 0) {
+            // Update the status of the found draw to 'Running'
             await client.query(
                 `
                 UPDATE draws
@@ -390,14 +373,22 @@ const startNewDraw = async () => {
                 [nextDraw[0].draw_counter],
             );
         } else {
+            // If no valid draw was found, rollback the transaction
             await client.query("ROLLBACK");
-            throw new Error("Invalid next draw configuration");
+            // Throw an error to indicate that no valid draws were found
+            throw new Error("There are no valid draws to run next");
         }
 
+        // If everything was successful, commit the transaction
         await client.query("COMMIT");
     } catch (error) {
+        // Log any errors that occur during the process
+        // Note: This catch block will handle both database errors
+        // and the error thrown when no valid draws are found
         console.error("Error running the startNewDraw function:", error);
     } finally {
+        // Always release the client back to the pool,
+        // regardless of whether the operation was successful or not
         client.release();
     }
 };
@@ -557,7 +548,6 @@ function filterTransactions(transactions, startDate, endDate) {
         const txDate = new Date(tx.timestamp);
         const isWithinDateRange = txDate >= startDate && txDate <= endDate;
         const isAboveMinAmount = tx.amount >= minAmount;
-        //console.log(tx.amount, minAmount);
         return isWithinDateRange && isAboveMinAmount;
     });
 }
@@ -603,24 +593,6 @@ function findWinnerAndTotal(transactions) {
 }
 
 /**
- * Calculates prize amount
- * @param {number} totalAmount - Total amount in the pool
- * @param {number} prizePercentage - Percentage of the prize
- * @param {number} participantCount - Number of participants
- * @returns {number} Calculated prize amount
- */
-function calculatePrize(totalAmount, prizePercentage, participantCount) {
-    return parseFloat(
-        (
-            (totalAmount * prizePercentage +
-                (totalAmount / participantCount) *
-                    INDIVIDUAL_PRIZE_PERCENTAGE) *
-            PERC
-        ).toFixed(2),
-    );
-}
-
-/**
  * Processes DAG transactions for prize distribution
  * @param {Array} amountsBySource - Grouped transactions by source
  * @param {Object} winnerTransaction - Winner transaction
@@ -658,7 +630,6 @@ async function processDAGTransactions(
                 toAddress === winnerTransaction.source
                     ? topPrize
                     : individualPrize;
-            const fee = 0.002; // Transaction fee
 
             const result = await pool.query(
                 `
@@ -677,18 +648,24 @@ async function processDAGTransactions(
                     const hashResult = await dag4.account.transferDag(
                         toAddress,
                         amount,
-                        fee,
+                        DAG_TXN_FEE,
                     );
 
-                    const { timestamp, hash, toAmount, receiver, fee, status } =
-                        hashResult;
+                    const {
+                        timestamp,
+                        hash,
+                        toAmount,
+                        receiver,
+                        fee_returned,
+                        status,
+                    } = hashResult;
 
                     let hashSuccess = {
                         timestamp: timestamp,
                         hash: hash,
                         amount: toAmount,
                         receiver: receiver,
-                        fee: fee,
+                        fee: fee_returned,
                         status: status,
                         message: null,
                     };
@@ -700,7 +677,7 @@ async function processDAGTransactions(
                         hash: null,
                         amount: amount,
                         receiver: toAddress,
-                        fee: fee,
+                        fee: DAG_TXN_FEE,
                         status: "Error",
                         message: error.message,
                     };
@@ -757,7 +734,6 @@ async function updateDatabase(
 cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     try {
         console.log("Executing scheduled task to finalize and start a draw");
-        //const response = await axios.get(`${APP_URL}/calculate-prizes`);
         await finalizeDraw();
         await startNewDraw(); //calculatePrizes();
         console.log("finalize and start a draw completed");
@@ -769,7 +745,7 @@ cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     }
 });
 
-cron.schedule("*/60 * * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
     try {
         console.log("Executing scheduled task every 60 minutes");
         const result = await retry();
