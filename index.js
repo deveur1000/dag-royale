@@ -27,12 +27,16 @@ const L1_URL = "https://l1-lb-integrationnet.constellationnetwork.io";
 
 // Environment Configuration
 let env;
+let sslEnabled;
+
 if (typeof process.env.REPL_ID === "undefined") {
     // We're not on Replit, so use dotenv
     require("dotenv").config();
     env = process.env;
+    sslEnabled = false;
     console.log("Running locally - using .env file");
 } else {
+    sslEnabled = true;
     console.log("Running on Replit - using Replit Secrets");
     env = process.env; // On Replit, process.env already contains the secrets
 }
@@ -71,6 +75,11 @@ const pool = new Pool({
     database: PGDATABASE,
     password: DBUSERPASSWORD,
     port: PGPORT || 5432, // Use PGPORT if available, otherwise default to 5432
+    ssl: sslEnabled
+        ? {
+              rejectUnauthorized: false,
+          }
+        : false,
 });
 
 // Utility function to introduce delay

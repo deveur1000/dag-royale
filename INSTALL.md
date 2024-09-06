@@ -73,6 +73,13 @@ Note: The following database commands should be run in a terminal or command pro
 ## Step 4: Configure Environment Variables
 
 1. Create a `.env` file in the root directory of the project:
+
+On windows:
+   ```
+   echo. > .env
+   ```
+
+On macOS/Linux:
    ```
    touch .env
    ```
