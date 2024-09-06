@@ -34,7 +34,7 @@ Note: The following database commands should be run in a terminal or command pro
 
 1. Create a new PostgreSQL database for DAG Royale:
    ```
-   createdb dag_royale
+   CREATE DATABASE dag_royale;
    ```
 
 2. Run the database setup script:
