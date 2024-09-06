@@ -25,7 +25,6 @@ const BE_URL = "https://be-integrationnet.constellationnetwork.io";
 const L0_URL = "https://l0-lb-integrationnet.constellationnetwork.io";
 const L1_URL = "https://l1-lb-integrationnet.constellationnetwork.io";
 
-
 // Environment Configuration
 let env;
 if (typeof process.env.REPL_ID === "undefined") {
@@ -73,6 +72,9 @@ const pool = new Pool({
     password: DBUSERPASSWORD,
     port: PGPORT || 5432, // Use PGPORT if available, otherwise default to 5432
 });
+
+// Utility function to introduce delay
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Serve static files from 'public' directory
 app.use(express.static("public"));
@@ -259,6 +261,8 @@ const retry = async () => {
                     `,
                         [status, hash, date, id],
                     );
+
+                    await delay(5000);
                 } catch (error) {
                     console.error(
                         `Failed to transfer for distribution ID: ${id}, error:${error.message}`,
@@ -657,14 +661,8 @@ async function processDAGTransactions(
                         DAG_TXN_FEE,
                     );
 
-                    const {
-                        timestamp,
-                        hash,
-                        amount,
-                        receiver,
-                        fee,
-                        status,
-                    } = hashResult;
+                    const { timestamp, hash, amount, receiver, fee, status } =
+                        hashResult;
 
                     let hashSuccess = {
                         timestamp: timestamp,
@@ -677,6 +675,8 @@ async function processDAGTransactions(
                     };
 
                     transactionsSent = transactionsSent.concat(hashSuccess);
+
+                    await delay(3000);
                 } catch (error) {
                     let hashFail = {
                         timestamp: new Date().toISOString(),
