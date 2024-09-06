@@ -16,7 +16,7 @@ Before you begin, ensure you have the following installed on your system:
 1. Open your terminal.
 2. Clone the DAG Royale repository:
    ```
-   git clone https://github.com/your-username/dag-royale.git
+   git clone https://github.com/deveur1000/dag-royale/
    cd dag-royale
    ```
 
