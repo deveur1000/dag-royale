@@ -56,6 +56,11 @@ const TOP_PRIZE_PERCENTAGE = 0.475;
 const PERC = 0.00000001; // Smallest unit of DAG
 const MIN_DAG_TX_AMOUNT = 5 * 100000000; // Minimum amount of DAG to be considered a transaction
 const DAG_TXN_FEE = 0.002; // Minimum amount of DAG to be considered a transaction
+const BLOCKLIST = [
+    { publickey: "DAG6EJXuUodj1zyH8NLyMVphUEgtXAmuCyuk87PR" },
+    { publickey: "DAG6k3XRXm4WhvJMyN9jcz5HKVRPN8fQ64Lbj1p2" },
+]; // Array of public keys for addresses that are blacklisted and should be excluded from transactions.
+
 
 // Initialize Express app
 const app = express();
@@ -548,7 +553,14 @@ function filterTransactions(transactions, startDate, endDate) {
         const txDate = new Date(tx.timestamp);
         const isWithinDateRange = txDate >= startDate && txDate <= endDate;
         const isAboveMinAmount = tx.amount >= minAmount;
-        return isWithinDateRange && isAboveMinAmount;
+
+        // Check if the tx.source is not in the BLOCKLIST list
+        const isNotIgnoredSource = !BLOCKLIST.some(
+            (pkObj) => pkObj.publickey === tx.source,
+        );
+
+        // Only include transactions that meet all criteria
+        return isWithinDateRange && isAboveMinAmount && isNotIgnoredSource;
     });
 }
 
@@ -730,6 +742,31 @@ async function updateDatabase(
     console.log("Processing completed and database updated.");
 }
 
+//TODO: delete, only for testing
+app.get("/test_round", async (req, res) => {
+    try {
+        console.log("Executing scheduled task to finalize and start a draw");
+        await finalizeDraw();
+        await startNewDraw(); //calculatePrizes();
+        console.log("finalize and start a draw completed");
+
+        const result = await calculatePrizes();
+
+        if (typeof result === "undefined" || !result) {
+            console.warn(
+                "The function calculatePrizes has nothing to process.",
+            );
+        } else {
+            console.log("Function calculate prizes:", result);
+        }
+    } catch (error) {
+        console.error(
+            "Error during scheduled finalize and start a draw:",
+            error,
+        );
+    }
+});
+
 // Configure scheduled task 0 21 * * *
 cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     try {
@@ -737,6 +774,16 @@ cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
         await finalizeDraw();
         await startNewDraw(); //calculatePrizes();
         console.log("finalize and start a draw completed");
+
+        const result = await calculatePrizes();
+
+        if (typeof result === "undefined" || !result) {
+            console.warn(
+                "The function calculatePrizes has nothing to process.",
+            );
+        } else {
+            console.log("Function calculate prizes:", result);
+        }
     } catch (error) {
         console.error(
             "Error during scheduled finalize and start a draw:",
@@ -752,23 +799,6 @@ cron.schedule("*/120 * * * *", async () => {
         console.log("Function return:", result);
     } catch (error) {
         console.error("Error calling retry:", error.message);
-    }
-});
-
-cron.schedule("*/120 * * * *", async () => {
-    try {
-        console.log("Executing scheduled task every 1 minute");
-        const result = await calculatePrizes();
-
-        if (typeof result === "undefined" || !result) {
-            console.warn(
-                "The function calculatePrizes has nothing to process.",
-            );
-        } else {
-            console.log("Function calculate prizes:", result);
-        }
-    } catch (error) {
-        console.error("Error calling calculatePrizes:", error.message);
     }
 });
 
