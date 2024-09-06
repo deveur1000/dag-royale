@@ -15,7 +15,9 @@ Players send DAG tokens to a designated address, competing for a chance to win b
 - 📱 Responsive design for desktop and mobile
 
 ## 🛠 Installation
+<<<<<<< HEAD
 For comprehensive installation instructions, please refer to our [Installation Guide](INSTALL.md).
+>>>>>>> 4d1015d (Small changes on readme)
 
 ## 🚀 Usage
 

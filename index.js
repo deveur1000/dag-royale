@@ -44,7 +44,7 @@ const {
     PGDATABASE,
     DBUSERPASSWORD,
     PGPORT,
-    PRIVATEKEY,
+    PRIVATE_KEY,
     CRON_SCHEDULE,
     PUBLIC_KEY,
 } = env;
@@ -229,7 +229,7 @@ const retry = async () => {
                 false,
             );
 
-            dag4.account.loginPrivateKey(pk);
+            dag4.account.loginPrivateKey(PRIVATE_KEY);
 
             // Iterate over each distribution record
             distributionsResult.rows.forEach(async (distribution) => {
@@ -622,7 +622,7 @@ async function processDAGTransactions(
             false,
         );
 
-        dag4.account.loginPrivateKey(PRIVATEKEY);
+        dag4.account.loginPrivateKey(PRIVATE_KEY);
 
         for (const transaction of amountsBySource) {
             const toAddress = transaction.source;
@@ -745,7 +745,7 @@ cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     }
 });
 
-cron.schedule("*/10 * * * *", async () => {
+cron.schedule("*/120 * * * *", async () => {
     try {
         console.log("Executing scheduled task every 60 minutes");
         const result = await retry();
@@ -755,7 +755,7 @@ cron.schedule("*/10 * * * *", async () => {
     }
 });
 
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("*/120 * * * *", async () => {
     try {
         console.log("Executing scheduled task every 1 minute");
         const result = await calculatePrizes();
