@@ -129,9 +129,3 @@ To update the application to the latest version:
    ```
    npm start
    ```
-
-## Contributing
-
-If you'd like to contribute to DAG Royale, please read our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to proceed.
-
-Thank you for installing DAG Royale! If you have any questions or need further assistance, please don't hesitate to reach out to the project maintainers.

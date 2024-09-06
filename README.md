@@ -15,9 +15,7 @@ Players send DAG tokens to a designated address, competing for a chance to win b
 - 📱 Responsive design for desktop and mobile
 
 ## 🛠 Installation
-<<<<<<< HEAD
 For comprehensive installation instructions, please refer to our [Installation Guide](INSTALL.md).
->>>>>>> 4d1015d (Small changes on readme)
 
 ## 🚀 Usage
 
@@ -46,9 +44,4 @@ This project was proudly submitted to the Metagraph Hackathon https://metagraph.
 - Our tireless team members who made this cosmic adventure possible!
 
 ---
-
-<<<<<<< HEAD
 Created with 💖 and ☕ 
-=======
-Created with 💖 and ☕ 
->>>>>>> f906e9f (Added open source license, readme, db setup and script improvements)
