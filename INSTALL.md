@@ -30,6 +30,8 @@ npm install
 
 ## Step 3: Set Up the Database
 
+Note: The following database commands should be run in a terminal or command prompt with PostgreSQL access. Depending on your operating system and PostgreSQL installation, you may need to adjust these commands. For example, you might need to use sudo on some systems, or use the PostgreSQL command prompt on Windows.
+
 1. Create a new PostgreSQL database for DAG Royale:
    ```
    createdb dag_royale
