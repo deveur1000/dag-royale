@@ -28,26 +28,47 @@ Install the project dependencies:
 npm install
 ```
 
+Install also:
+
+```
+npm install dotenv
+```
+
 ## Step 3: Set Up the Database
 
 Note: The following database commands should be run in a terminal or command prompt with PostgreSQL access. Depending on your operating system and PostgreSQL installation, you may need to adjust these commands. For example, you might need to use sudo on some systems, or use the PostgreSQL command prompt on Windows.
 
-1. Create a new PostgreSQL database for DAG Royale:
-   ```
+1. Open the PostgreSQL interactive terminal:
+   - On Windows: Open "SQL Shell (psql)" from the Start menu
+   - On macOS/Linux: Open a terminal and type `psql -U postgres`
+
+2. Once connected, create the database with SQL:
+
+   ```sql
    CREATE DATABASE dag_royale;
    ```
 
-2. Run the database setup script:
-   ```
-   psql -U your_postgres_username -d dag_royale -a -f database/setup.sql
-   ```
-   Replace `your_postgres_username` with your actual PostgreSQL username.
+3. Connect to the new database:
 
-3. Verify that the tables have been created successfully:
+   ```sql
+   \c dag_royale
    ```
-   psql -U your_postgres_username -d dag_royale -c "\dt"
+
+4. Locate the `setup.sql` file in your project's `database` folder.
+
+5. Open the `setup.sql` file in a text editor and copy its entire contents.
+
+6. Paste the contents into the psql prompt and press Enter to execute the SQL commands.
+
+7. To verify that the tables have been created successfully, run:
+
+   ```sql
+   \dt
    ```
+
    You should see `draws` and `distributions` in the list of relations.
+
+8. Exit psql by typing `\q` and pressing Enter.
 
 ## Step 4: Configure Environment Variables
 
@@ -61,7 +82,7 @@ Note: The following database commands should be run in a terminal or command pro
    DBUSER=your_postgres_username
    PGHOST=localhost
    PGDATABASE=dag_royale
-   DBUSERPASSWORD=your_postgres_password
+   DBUSERPASSWORD= 'the password for the user on your setup.sql script'
    PGPORT=5432
    PRIVATE_KEY=your_dag_private_key
    PUBLIC_KEY=your_dag_public_key
@@ -78,7 +99,7 @@ Note: The following database commands should be run in a terminal or command pro
 
 1. Start the server:
    ```
-   npm start
+   node index.j
    ```
 
 2. The server should now be running on `http://localhost:3000`.
@@ -98,36 +119,4 @@ If you encounter any issues during the installation process, try the following:
 
 If problems persist, please open an issue on the GitHub repository with details about the error you're encountering.
 
-## Development Mode
 
-To run the application in development mode with hot reloading:
-
-```
-npm run dev
-```
-
-This will start the server using nodemon, which will automatically restart the server when changes are detected in the source files.
-
-## Updating the Application
-
-To update the application to the latest version:
-
-1. Pull the latest changes from the repository:
-   ```
-   git pull origin main
-   ```
-
-2. Install any new dependencies:
-   ```
-   npm install
-   ```
-
-3. Run any new database migrations (if applicable):
-   ```
-   npm run migrate
-   ```
-
-4. Restart the server:
-   ```
-   npm start
-   ```

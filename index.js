@@ -25,6 +25,7 @@ const BE_URL = "https://be-integrationnet.constellationnetwork.io";
 const L0_URL = "https://l0-lb-integrationnet.constellationnetwork.io";
 const L1_URL = "https://l1-lb-integrationnet.constellationnetwork.io";
 
+
 // Environment Configuration
 let env;
 if (typeof process.env.REPL_ID === "undefined") {
@@ -61,7 +62,6 @@ const BLOCKLIST = [
     { publickey: "DAG6k3XRXm4WhvJMyN9jcz5HKVRPN8fQ64Lbj1p2" },
 ]; // Array of public keys for addresses that are blacklisted and should be excluded from transactions.
 
-
 // Initialize Express app
 const app = express();
 
@@ -72,13 +72,7 @@ const pool = new Pool({
     database: PGDATABASE,
     password: DBUSERPASSWORD,
     port: PGPORT || 5432, // Use PGPORT if available, otherwise default to 5432
-    ssl: {
-        rejectUnauthorized: false, // Note: In production, you should use a valid SSL certificate
-    },
 });
-
-// Utility function to introduce delay
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Serve static files from 'public' directory
 app.use(express.static("public"));
@@ -638,7 +632,7 @@ async function processDAGTransactions(
 
         for (const transaction of amountsBySource) {
             const toAddress = transaction.source;
-            const amount =
+            const toAmount =
                 toAddress === winnerTransaction.source
                     ? topPrize
                     : individualPrize;
@@ -652,32 +646,32 @@ async function processDAGTransactions(
                 	AND draw_id = $2
                 	AND prize = $3
             `,
-                [toAddress, draw_id, amount],
+                [toAddress, draw_id, toAmount],
             );
 
             if (result.rows.length === 0) {
                 try {
                     const hashResult = await dag4.account.transferDag(
                         toAddress,
-                        amount,
+                        toAmount,
                         DAG_TXN_FEE,
                     );
 
                     const {
                         timestamp,
                         hash,
-                        toAmount,
+                        amount,
                         receiver,
-                        fee_returned,
+                        fee,
                         status,
                     } = hashResult;
 
                     let hashSuccess = {
                         timestamp: timestamp,
                         hash: hash,
-                        amount: toAmount,
+                        amount: amount,
                         receiver: receiver,
-                        fee: fee_returned,
+                        fee: fee,
                         status: status,
                         message: null,
                     };
@@ -687,7 +681,7 @@ async function processDAGTransactions(
                     let hashFail = {
                         timestamp: new Date().toISOString(),
                         hash: null,
-                        amount: amount,
+                        amount: toAmount,
                         receiver: toAddress,
                         fee: DAG_TXN_FEE,
                         status: "Error",
