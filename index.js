@@ -271,7 +271,7 @@ const retry = async () => {
                         [status, hash, date, id],
                     );
 
-                    await delay(5000);
+                    await delay(7000);
                 } catch (error) {
                     console.error(
                         `Failed to transfer for distribution ID: ${id}, error:${error.message}`,
@@ -685,7 +685,7 @@ async function processDAGTransactions(
 
                     transactionsSent = transactionsSent.concat(hashSuccess);
 
-                    await delay(3000);
+                    await delay(7000);
                 } catch (error) {
                     let hashFail = {
                         timestamp: new Date().toISOString(),
