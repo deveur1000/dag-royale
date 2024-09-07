@@ -745,31 +745,6 @@ async function updateDatabase(
     console.log("Processing completed and database updated.");
 }
 
-//TODO: delete, only for testing
-app.get("/test_round", async (req, res) => {
-    try {
-        console.log("Executing scheduled task to finalize and start a draw");
-        await finalizeDraw();
-        await startNewDraw(); //calculatePrizes();
-        console.log("finalize and start a draw completed");
-
-        const result = await calculatePrizes();
-
-        if (typeof result === "undefined" || !result) {
-            console.warn(
-                "The function calculatePrizes has nothing to process.",
-            );
-        } else {
-            console.log("Function calculate prizes:", result);
-        }
-    } catch (error) {
-        console.error(
-            "Error during scheduled finalize and start a draw:",
-            error,
-        );
-    }
-});
-
 // Configure scheduled task 0 21 * * *
 cron.schedule(CRON_SCHEDULE || "0 21 * * *", async () => {
     try {
