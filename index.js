@@ -92,6 +92,18 @@ app.use(express.static("public"));
  * GET /current-round
  * Fetches information about the current active round (draw)
  */
+
+app.get("/deposit-address", async (req, res) => {
+    try {
+        res.status(200).json({ publickey: PUBLIC_KEY });
+    } catch (error) {
+        console.error("Error fetching publickey:", error);
+        res.status(500).json({
+            error: "An error occurred while fetching the current publickey",
+        });
+    }
+});
+
 app.get("/current-round", async (req, res) => {
     try {
         const result = await pool.query(`

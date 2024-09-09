@@ -115,6 +115,21 @@ async function fetchTransactions(address) {
     }
 }
 
+//function to fetch deposit address
+async function fetchDepositAddress() {
+    try {
+        const response = await fetch("/deposit-address");
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.publickey;
+    } catch (error) {
+        console.error("Failed to fetch deposit address:", error);
+        throw error;
+    }
+}
+
 /**
  * Processes transactions and calculates the leaderboard.
  * @param {Array} transactions - Array of transaction objects.
@@ -420,6 +435,10 @@ async function initialize() {
     try {
         await fetchRoundInfo(); // Fetch initial round info
         initializeGameStats();
+
+        const depositAddress = await fetchDepositAddress();
+        document.getElementById("depositAddress").textContent = depositAddress;
+
         await loadLeaderboard();
         initializeEventListeners();
         initializeTooltips();
